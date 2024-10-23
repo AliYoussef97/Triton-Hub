@@ -69,7 +69,7 @@ If you encounter any bugs or issues with the current version, please feel free t
 | Include Triton Block Sizes in Autotune | ❌  |
 | Convolution Layer                      | ❌       |
 | BatchNorm                        | ❌       |
-| Different Activation Functions   | ❌       |
+| Different Activation Functions   | ✔️       |
 
 
 ## License
