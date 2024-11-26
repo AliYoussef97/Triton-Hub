@@ -7,24 +7,16 @@ I hope this repository proves helpful to the community, making Triton-based neur
 
 ## Installation
 
-You can install **TritonHub** directly from:
-
-```bash
-pip install TritonHub
-```
-
-Alternatively, you can install it from the GitHub repository:
-
-```bash
-pip install git+https://github.com/AliYoussef97/TritonHub.git
-```
-
-Or clone the repository and install manually:
+You can install **TritonHub** through the following steps:
 
 ```bash
 git clone https://github.com/AliYoussef97/TritonHub.git
 cd TritonHub
 python setup.py install
+```
+For development installation, you can use the following command:
+```bash
+python setup.py develop
 ```
 
 TritonHub requires the following dependencies:
