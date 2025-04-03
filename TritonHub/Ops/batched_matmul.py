@@ -140,19 +140,19 @@ def _batched_matmul_bwd_kernel_y(x_ptr, stride_xb, stride_xm, stride_xk,
     x_ptr += pid_b * stride_xb
     dout_ptr += pid_b * stride_doutb
     
-    x_ptrs = x_ptr + (offs_m[:, None] * stride_xm + offs_k[None, :] * stride_xk)
+    x_ptrs = x_ptr + (offs_k[:, None] * stride_xk + offs_m[None, :] * stride_xm)
     dout_ptrs = dout_ptr + (offs_m[:, None] * stride_doutm + offs_n[None, :] * stride_doutn)
     
-    dy = tl.zeros((BLOCK_SIZE_N, BLOCK_SIZE_K), dtype=tl.float32)
+    dy = tl.zeros((BLOCK_SIZE_K, BLOCK_SIZE_N), dtype=tl.float32)
     
     for m in range(0, tl.cdiv(M, BLOCK_SIZE_M)):
-        x = tl.load(x_ptrs, mask=(offs_m[:, None] < (M - m * BLOCK_SIZE_M)) & (offs_k[None, :] < K), other=0.0).to(dtype)
+        x = tl.load(x_ptrs, mask=(offs_k[:, None] < K) & (offs_m[None, :] < (M - m * BLOCK_SIZE_M)), other=0.0).to(dtype)
         dout = tl.load(dout_ptrs, mask=(offs_m[:, None] < (M - m * BLOCK_SIZE_M)) & (offs_n[None, :] < N), other=0.0).to(dtype)
-        dy += tl.dot(dout.trans(1, 0), x)
+        dy += tl.dot(x, dout)
         x_ptrs += BLOCK_SIZE_M * stride_xm
         dout_ptrs += BLOCK_SIZE_M * stride_doutm
     
-    dy = dy.to(dtype)
+    dy = dy.trans(1, 0).to(dtype)
     
     dy_ptr += pid_b * stride_dyb
     dy_ptrs = dy_ptr + offs_n[:, None] * stride_dyn + offs_k[None, :] * stride_dyk
