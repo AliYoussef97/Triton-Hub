@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from TritonHub.Activations.mish import Mish
+from TritonHub.Activations import Mish
 from tabulate import tabulate as tb
 
 class MishUnitTest:

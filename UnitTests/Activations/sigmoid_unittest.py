@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from TritonHub.Activations.sigmoid import Sigmoid
+from TritonHub.Activations import Sigmoid
 from tabulate import tabulate as tb
 
 class SigmoidUnitTest:
