@@ -128,7 +128,7 @@ def _batched_matmul_bwd_kernel_y(x_ptr, stride_xb, stride_xm, stride_xk,
                                  M: tl.constexpr, N: tl.constexpr, K: tl.constexpr,
                                  BLOCK_SIZE_M: tl.constexpr, BLOCK_SIZE_N: tl.constexpr,
                                  BLOCK_SIZE_K: tl.constexpr, dtype: tl.constexpr):
-    num_pid_n = tl.cdiv(M, BLOCK_SIZE_N)
+    num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)
     pid_n = tl.program_id(axis=0) % num_pid_n
     pid_k = tl.program_id(axis=0) // num_pid_n
     pid_b = tl.program_id(axis=1)
@@ -183,7 +183,7 @@ def _batched_matmul_bwd(x, y, dout):
     _batched_matmul_bwd_kernel_y[grid_y](x, x.stride(0), x.stride(1), x.stride(2),
                                          dout, dout.stride(0), dout.stride(1), dout.stride(2),
                                          dy, dy.stride(0), dy.stride(1), dy.stride(2),
-                                         N, M, K, dtype=dtype)
+                                         M, N, K, dtype=dtype)
     
     return dx, dy
 
