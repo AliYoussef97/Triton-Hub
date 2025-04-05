@@ -1,30 +1,31 @@
-# TritonHub
+<h1 style="text-align: center;">TritonHub</h1>
 
-## About
+## 🌐 Overview
 TritonHub serves as a container for various PyTorch neural network components written in Triton, offering an easy way to access and integrate Triton-based functions from one centralized source. These components include custom implementations of activation functions, normalization layers, and other neural network operations designed for efficient execution on GPUs.
 
-I hope this repository proves helpful to the community, making Triton-based neural network operations more accessible and convenient for developers and researchers alike.
+## 📦 Installation
 
-## Installation
-
-You can install **TritonHub** through the following steps:
+Clone the repository and install using `setup.py`:
 
 ```bash
 git clone https://github.com/AliYoussef97/TritonHub.git
 cd TritonHub
 python setup.py install
 ```
-For development installation, you can use the following command:
+
+For development:
 ```bash
 python setup.py develop
 ```
 
-TritonHub requires the following dependencies:
--   Linux
--   CUDA
--   NVIDIA GPU
+### ✓ Prerequisites
+TritonHub requires the following distinguished companions:
+- Linux operating system
+- CUDA
+- GPU hardware
+- Triton (installed via pip or from source)
 
-## Usage Example
+## 🚀 Quick Start
 
 ```python
 import torch
@@ -33,39 +34,42 @@ from TritonHub.Activation import GeLU
 
 batch, length, dim = 2, 100, 128
 device = "cuda"
-dtype = torch.float32  # or torch.float16
+dtype = torch.float32 # or torch.float16
 
 x = torch.randn(batch, length, dim, device=device, dtype=dtype).to("cuda")
 
-# Initialize LayerNorm and GeLU modules from TritonHub
 layernorm = LayerNorm(128, eps=1e-6, elementwise_affine=True, bias=True, device=device, dtype=dtype)
-gelu = GeLU(approximate='None') # or tanh
+gelu = GeLU(approximate='None') # or tanh approximation.
 
-# Apply LayerNorm and GeLU on the input tensor
 x = layernorm(x)
 x = gelu(x)
 ```
 
-## Contributions
+## 🤝 Contributions
 
-Contributions are welcome! If you'd like to add new functionalities, please:
-1. Create a pull request with your implementation.
-2. Ensure the pull request includes a unit test for the new module, similar to the tests found in the `UnitTests` folder.
+Contributions are welcomed! To add a new feature or improve an existing module:
 
-If you encounter any bugs or issues with the current version, please feel free to report them by creating an issue or submitting a pull request.
+1. Fork the repository and create a pull request.
+2. Include a unit test under the UnitTests directory for your module.
+3. Follow existing coding conventions and ensure compatibility with PyTorch + Triton.
 
-## TODO
-| Feature                         | Status  |
-|----------------------------------|---------|
-| Linear Layer Backward Pass       | ✔️      |
-| Include Triton Block Sizes in Autotune | ❌  |
-| Convolution Layer                      | ❌       |
-| BatchNorm                        | ❌       |
-| Different Activation Functions   | ✔️       |
+Found a bug or have a suggestion? Feel free to [open an issue](https://github.com/ayoussf/Triton-Hub/issues) or submit a PR.
 
 
-## License
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/AliYoussef97/TritonHub/blob/main/LICENSE) file for more details.
 
-## Acknowledgments
-Special thanks to the authors of [Mamba](https://github.com/state-spaces/mamba), as parts of their Triton code was influential or some of the modules in TritonHub.
+## 🗺️ Roadmap
+| Exquisite Feature                | Status       |
+|----------------------------------|--------------|
+| Linear Layer Backward Pass       | ✅ |
+| Include Triton Block Sizes in Autotune | ⏳ |
+| Convolution Layer                | ❌ |
+| BatchNorm                        | ❌ |
+| Different Activation Functions   | ✅ |
+| Distance Functions               | ⏳ |
+
+
+## 📄 License
+TritonHub is released under the MIT License. You're free to use, modify, and distribute it.
+
+## 🙏 Acknowledgments
+Special thanks to the authors of [Mamba](https://github.com/state-spaces/mamba). Their work has been a valuable reference for parts of this repository, particularly around Triton code patterns and performance optimization.
