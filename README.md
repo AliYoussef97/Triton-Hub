@@ -65,7 +65,7 @@ Found a bug or have a suggestion? Feel free to [open an issue](https://github.co
 | Convolution Layer                | ❌ |
 | BatchNorm                        | ❌ |
 | Different Activation Functions   | ✅ |
-| Distance Functions               | ⏳ |
+| Distance Functions               | ✅ |
 
 
 ## 📄 License

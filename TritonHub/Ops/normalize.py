@@ -30,9 +30,10 @@ def _compute_norms_kernel(in_ptr, stride_inb, stride_inm, stride_ink,
     offs_m = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
     
-    in_ptrs = in_ptr + (pid_b * stride_inb) + (offs_m[:, None] * stride_inm) + (offs_k[None, :] * stride_ink)
+    in_ptr += (pid_b * stride_inb) + (offs_m[:, None] * stride_inm)
     out = tl.zeros((BLOCK_SIZE_M,), dtype=tl.float32) 
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)): 
+        in_ptrs = in_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_ink)
         inputs = tl.load(in_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(tl.float32) 
         inputs = tl.sum(inputs * inputs, axis=1) 
         out += inputs
@@ -62,11 +63,10 @@ def _normalize_fwd_kernel(x_ptr, stride_xb, stride_xm, stride_xk,
     offs_k = tl.arange(0, BLOCK_SIZE_K)
 
     x_ptr += (pid_b * stride_xb) + (offs_m[:, None] * stride_xm)
-    norms_x_ptr += (pid_b * stride_normsxb) + (offs_m * stride_normsxm)
+    norms_x_ptr += (pid_b * stride_normsxb) + (offs_m[:, None] * stride_normsxm)
     x_norm_ptr += (pid_b * stride_xnormb) + (offs_m[:, None] * stride_xnormm)
 
-    norms_x = tl.load(norms_x_ptr, mask=offs_m < M, other=0.0).to(dtype)
-    norms_x = norms_x[:, None]
+    norms_x = tl.load(norms_x_ptr, mask=offs_m[:, None] < M, other=0.0).to(dtype)
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
         x_ptrs = x_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xk)
         x = tl.load(x_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(dtype)
@@ -82,15 +82,14 @@ def _normalize_fwd(x, eps=1e-6):
     norms_x = torch.empty((B, M), memory_format=torch.contiguous_format, device=x.device, dtype=x.dtype)
     assert x.stride(-1) == 1, "Output tensors must be contiguous"
     dtype = (tl.bfloat16 if x.dtype == torch.bfloat16 else (tl.float16 if x.dtype == torch.float16 else tl.float32))
-    grid_norm_x = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']), B)
     grid = lambda META: (
         triton.cdiv(M, META['BLOCK_SIZE_M']),
         B,
     )
     with torch.cuda.device(x.device.index):
-        _compute_norms_kernel[grid_norm_x](x, x.stride(0), x.stride(1), x.stride(2),
-                                           norms_x, norms_x.stride(0), norms_x.stride(1),
-                                           eps, M, K, dtype=dtype)
+        _compute_norms_kernel[grid](x, x.stride(0), x.stride(1), x.stride(2),
+                                    norms_x, norms_x.stride(0), norms_x.stride(1),
+                                    eps, M, K, dtype=dtype)
         _normalize_fwd_kernel[grid](x, x.stride(0), x.stride(1), x.stride(2),
                                     norms_x, norms_x.stride(0), norms_x.stride(1), 
                                     x_norm, x_norm.stride(0), x_norm.stride(1), x_norm.stride(2),
@@ -115,9 +114,9 @@ def _normalize_bwd_kernel(x_norm_ptr, stride_xnormb, stride_xnormm, stride_xnorm
     offs_k = tl.arange(0, BLOCK_SIZE_K)
 
     x_norm_ptr += (pid_b * stride_xnormb) + (offs_m[:, None] * stride_xnormm)
-    norms_x_ptr += pid_b * stride_normsxb + (offs_m * stride_normsxm)
-    dout_ptr += pid_b * stride_dout_b + (offs_m[:, None] * stride_dout_m)
-    dx_ptr += pid_b * stride_dxb + (offs_m[:, None] * stride_dxm)
+    norms_x_ptr += (pid_b * stride_normsxb) + (offs_m[:, None] * stride_normsxm)
+    dout_ptr += (pid_b * stride_dout_b) + (offs_m[:, None] * stride_dout_m)
+    dx_ptr += (pid_b * stride_dxb) + (offs_m[:, None] * stride_dxm)
 
     proj = tl.zeros([BLOCK_SIZE_M], dtype=tl.float32)
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
@@ -127,8 +126,7 @@ def _normalize_bwd_kernel(x_norm_ptr, stride_xnormb, stride_xnormm, stride_xnorm
         dout = tl.load(dout_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(tl.float32)   
         proj += tl.sum(x_norm * dout, axis=1)
     
-    norms_x = tl.load(norms_x_ptr, mask=offs_m < M, other=0.0).to(dtype)
-    norms_x = norms_x[:, None]
+    norms_x = tl.load(norms_x_ptr, mask=offs_m[:, None] < M, other=0.0).to(dtype)
     proj = proj[:, None]
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
         x_norm_ptrs = x_norm_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xnormk)

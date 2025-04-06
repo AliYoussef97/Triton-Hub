@@ -3,7 +3,7 @@ from TritonHub.Ops import bmm
 from tabulate import tabulate as tb
 
 class BMMUnitTest:
-    def __init__(self, B=4, N=512, M=512, D=256, dtype=torch.float32, print_tb=False, bias=True):
+    def __init__(self, B=4, N=512, M=512, D=256, dtype=torch.float32, print_tb=False):
         self.B = B
         self.N = N
         self.M = M
