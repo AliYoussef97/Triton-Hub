@@ -27,25 +27,23 @@ def _compute_norms_kernel(in_ptr, stride_inb, stride_inm, stride_ink,
     pid_m = tl.program_id(axis=0)
     pid_b = tl.program_id(axis=1)
 
-    in_ptr += pid_b * stride_inb
-
     offs_m = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
     
-    in_norm_ptrs = in_ptr + (offs_m[:, None] * stride_inm + offs_k[None, :] * stride_ink)
-    in_norms = tl.zeros((BLOCK_SIZE_M,), dtype=tl.float32) 
+    in_ptrs = in_ptr + (pid_b * stride_inb) + (offs_m[:, None] * stride_inm) + (offs_k[None, :] * stride_ink)
+    out = tl.zeros((BLOCK_SIZE_M,), dtype=tl.float32) 
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)): 
-        in_norm = tl.load(in_norm_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(tl.float32) 
-        in_norm = tl.sum(in_norm * in_norm, axis=1) 
-        in_norms += in_norm
-        in_norm_ptrs += BLOCK_SIZE_K * stride_ink
-    in_norms = tl.sqrt(in_norms) 
-    in_norms = tl.maximum(in_norms, eps)
-    in_norms = in_norms.to(dtype)
+        inputs = tl.load(in_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(tl.float32) 
+        inputs = tl.sum(inputs * inputs, axis=1) 
+        out += inputs
+        in_ptrs += BLOCK_SIZE_K * stride_ink
+    out = tl.sqrt(out) 
+    out = tl.maximum(out, eps)
+    out = out.to(dtype)
 
     out_ptr += pid_b * stride_outb
     out_ptrs = out_ptr + (offs_m * stride_outr)
-    tl.store(out_ptrs, in_norms, mask=offs_m < M)
+    tl.store(out_ptrs, out, mask=offs_m < M)
 
 @triton.autotune(
     configs=get_cuda_autotune_config(),
@@ -60,24 +58,21 @@ def _normalize_fwd_kernel(x_ptr, stride_xb, stride_xm, stride_xk,
     pid_m = tl.program_id(axis=0)
     pid_b = tl.program_id(axis=1)
 
-    x_ptr += pid_b * stride_xb
-    norms_x_ptr += pid_b * stride_normsxb
-    x_norm_ptr += pid_b * stride_xnormb
-
     offs_m = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
 
-    x_ptrs = x_ptr + (offs_m[:, None] * stride_xm)
-    x_norm_ptrs = x_norm_ptr + (offs_m[:, None] * stride_xnormm)
-    norms_x_ptrs = norms_x_ptr + offs_m * stride_normsxm
-    norms_x = tl.load(norms_x_ptrs, mask=offs_m < M, other=0.0).to(dtype)
+    x_ptr += (pid_b * stride_xb) + (offs_m[:, None] * stride_xm)
+    norms_x_ptr += (pid_b * stride_normsxb) + (offs_m * stride_normsxm)
+    x_norm_ptr += (pid_b * stride_xnormb) + (offs_m[:, None] * stride_xnormm)
 
+    norms_x = tl.load(norms_x_ptr, mask=offs_m < M, other=0.0).to(dtype)
+    norms_x = norms_x[:, None]
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
-        current_x_ptrs = x_ptrs + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xk)
-        x = tl.load(current_x_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(dtype)
-        x_n = (x / norms_x[:, None]).to(dtype)
-        current_x_norm_ptrs = x_norm_ptrs + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xnormk)
-        tl.store(current_x_norm_ptrs, x_n, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)))
+        x_ptrs = x_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xk)
+        x = tl.load(x_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(dtype)
+        x_n = (x / norms_x).to(dtype)
+        x_norm_ptrs = x_norm_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xnormk)
+        tl.store(x_norm_ptrs, x_n, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)))
 
 def _normalize_fwd(x, eps=1e-6):
     if x.stride(-1) != 1:
