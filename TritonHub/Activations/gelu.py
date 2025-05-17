@@ -2,15 +2,10 @@ import torch
 import triton
 import triton.language as tl
 import math
+from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
-    configs=[
-        triton.Config({}, num_warps=2),
-        triton.Config({}, num_warps=4),
-        triton.Config({}, num_warps=8),
-        triton.Config({}, num_warps=16),
-        triton.Config({}, num_warps=32)
-    ],
+    configs=get_cuda_autotune_config(block_keys=None),
     key=['N'],
 )
 @triton.jit
@@ -54,13 +49,7 @@ def _gelu_fwd(x, approximate='none'):
     return out.reshape(*batch_shape, out.shape[-1])
 
 @triton.autotune(
-    configs=[
-        triton.Config({}, num_warps=2),
-        triton.Config({}, num_warps=4),
-        triton.Config({}, num_warps=8),
-        triton.Config({}, num_warps=16),
-        triton.Config({}, num_warps=32)
-    ],
+    configs=get_cuda_autotune_config(block_keys=None),
     key=['N'],
 )
 @triton.jit

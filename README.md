@@ -61,12 +61,12 @@ Found a bug or have a suggestion? Feel free to [open an issue](https://github.co
 | Exquisite Feature                | Status       |
 |----------------------------------|--------------|
 | Linear Layer Backward Pass       | ✅ |
-| Include Triton Block Sizes in Autotune | ⏳ |
-| Convolution Layer                | ❌ |
+| Include Triton Block Sizes in Autotune | ✅ |
+| Convolution Layer (1D/2D)               | ❌ |
 | BatchNorm                        | ❌ |
-| Different Activation Functions   | ✅ |
+| Activation Functions   | ✅ |
 | Distance Functions               | ✅ |
-
+| Batched Matmul               | ✅ |
 
 ## 📄 License
 TritonHub is released under the MIT License. You're free to use, modify, and distribute it.

@@ -2,83 +2,10 @@ import torch
 import triton
 import triton.language as tl
 import math
-
-def get_cuda_autotune_config():
-    return [
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 1}, num_stages=3,
-                      num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 1}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 1}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 1}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 1}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 1}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 1}, num_stages=5,
-                      num_warps=2),
-        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32, 'GROUP_SIZE_M': 1}, num_stages=5,
-                      num_warps=2),
-        # Good config for fp8 inputs.
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=3,
-                      num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=3,
-                      num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 128, 'GROUP_SIZE_M': 8}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 64, 'GROUP_SIZE_M': 8}, num_stages=4,
-                      num_warps=4)
-    ]
-
-def get_cuda_autotune_config_db():
-    return [
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256}, num_stages=3,
-                      num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 256}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 64}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 128}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32}, num_stages=5,
-                      num_warps=2),
-        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64}, num_stages=5,
-                      num_warps=2),
-        # Good config for fp8 inputs.
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256}, num_stages=3,
-                      num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 128}, num_stages=3,
-                      num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 256, 'BLOCK_SIZE_N': 64}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 256}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 64}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 128}, num_stages=4,
-                      num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32}, num_stages=4,
-                      num_warps=4)
-    ]
+from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True),
     key=['M', 'N', 'K'],
 )
 @triton.jit
@@ -156,7 +83,7 @@ def _linear_fwd(x, weight, bias):
     return out.reshape(*batch_shape, N)
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True),
     key=['M', 'N', 'K'],
 )
 @triton.jit
@@ -202,7 +129,7 @@ def _linear_kernel_bwd_dx(DOUT, W, DX,
     tl.store(DX_ptr, DX_acc, mask=mask)
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True),
     key=['M', 'N', 'K'],
 )
 @triton.jit
@@ -248,7 +175,7 @@ def _linear_kernel_bwd_dw(X, DOUT, DW,
     tl.store(DW_ptr, DW_acc, mask=mask)
 
 @triton.autotune(
-    configs=get_cuda_autotune_config_db(),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N'], include_group_size=True, include_fp8_configs=True),
     key=['M', 'N'],
 )
 @triton.jit

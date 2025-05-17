@@ -1,22 +1,10 @@
 import triton
 import triton.language as tl
 import torch
-
-def get_cuda_autotune_config():
-    return [
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 64}, num_stages=3, num_warps=8),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 256, 'BLOCK_SIZE_K': 32}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 128, 'BLOCK_SIZE_K': 32}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 128, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32}, num_stages=4, num_warps=4),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 32, 'BLOCK_SIZE_K': 32}, num_stages=5, num_warps=2),
-        triton.Config({'BLOCK_SIZE_M': 32, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}, num_stages=5, num_warps=2),
-        triton.Config({'BLOCK_SIZE_M': 64, 'BLOCK_SIZE_N': 64, 'BLOCK_SIZE_K': 32}, num_stages=4, num_warps=2),
-    ]
+from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K']),
     key=['M', 'N', 'K'])
 @triton.jit
 def _batched_matmul_fwd_kernel(x_ptr, stride_xb, stride_xm, stride_xk,
@@ -79,7 +67,7 @@ def _batched_matmul_fwd(x, y):
     return out
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K']),
     key=['M', 'N', 'K'])
 @triton.jit
 def _batched_matmul_bwd_kernel_x(y_ptr, stride_yb, stride_yn, stride_yk,
@@ -119,7 +107,7 @@ def _batched_matmul_bwd_kernel_x(y_ptr, stride_yb, stride_yn, stride_yk,
     tl.store(dx_ptrs, dx, mask=(offs_m[:, None] < M) & (offs_k[None, :] < K))
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K']),
     key=['M', 'N', 'K'])
 @triton.jit
 def _batched_matmul_bwd_kernel_y(x_ptr, stride_xb, stride_xm, stride_xk,

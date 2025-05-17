@@ -2,15 +2,10 @@ import torch
 import triton
 import triton.language as tl
 import random
+from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
-    configs=[
-        triton.Config({}, num_warps=2),
-        triton.Config({}, num_warps=4),
-        triton.Config({}, num_warps=8),
-        triton.Config({}, num_warps=16),
-        triton.Config({}, num_warps=32)
-    ],
+    configs=get_cuda_autotune_config(block_keys=None),
     key=['M'],
 )
 @triton.jit
@@ -55,13 +50,7 @@ def _dropout_fwd(x, p, seed, training):
         return out.reshape(*input_shape)
 
 @triton.autotune(
-    configs=[
-        triton.Config({}, num_warps=2),
-        triton.Config({}, num_warps=4),
-        triton.Config({}, num_warps=8),
-        triton.Config({}, num_warps=16),
-        triton.Config({}, num_warps=32)
-    ],
+    configs=get_cuda_autotune_config(block_keys=None),
     key=['M'],
 )
 @triton.jit

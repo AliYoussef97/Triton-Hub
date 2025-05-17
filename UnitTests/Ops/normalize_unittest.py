@@ -1,5 +1,5 @@
 import torch
-from TritonHub.Ops.normalize import normalize
+from TritonHub.Ops import normalize
 from tabulate import tabulate as tb
 
 class NormalizeUnitTest:

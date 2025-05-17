@@ -1,24 +1,9 @@
-__version__ = '1.0.4'
+__version__ = '1.1.0'
 
-from . import Activations
-from . import Layers
-from . import Normalization
-from . import Ops
-from . import Distance
+from . import Activations, Layers, Normalization, Ops, Distance
 
-from .Activations import *
-from .Layers import *
-from .Normalization import *
-from .Ops import *
-from .Distance import *
-
-# Expose all submodules and their contents
+# Expose all submodules.
 __all__ = ['Activations',
            'Layers',
            'Normalization',
-           'Ops'
-           *Activations.__all__,
-           *Layers.__all__,
-           *Normalization.__all__,
-           *Ops.__all__,
-           *Distance.__all__]
+           'Ops']
