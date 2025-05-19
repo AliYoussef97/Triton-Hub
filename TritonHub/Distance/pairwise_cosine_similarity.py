@@ -1,7 +1,8 @@
 import triton
 import triton.language as tl
 import torch
-from TritonHub.Ops.normalize import _compute_norms_kernel, _normalize_fwd_kernel
+from TritonHub.Ops.norm import _compute_norms_kernel
+from TritonHub.Ops.normalize import _normalize_fwd_kernel
 from TritonHub.Ops.batched_matmul import _batched_matmul_fwd_kernel
 from TritonHub.autotune import get_cuda_autotune_config
 
@@ -175,7 +176,7 @@ class CosineSimilarity(torch.autograd.Function):
     @staticmethod
     @torch.amp.custom_fwd(device_type='cuda')
     def forward(ctx, x, y, eps=1e-6):
-        assert len(x.shape) == 3 and len(y.shape) == 3, "Expected 3D (B, M, K) and 3D (B, N, K) tensors"
+        assert len(x.shape) == 3 and len(y.shape) == 3, "Expected 3D (B, M, D) and 3D (B, N, D) tensors, add batch dim inputs are 2D"
         output, x_norm, y_norm, norms_x, norms_y = _cos_sim_fwd(x, y, eps)
         ctx.save_for_backward(output, x_norm, y_norm, norms_x, norms_y)
         return output
