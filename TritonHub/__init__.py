@@ -6,4 +6,5 @@ from . import Activations, Layers, Normalization, Ops, Distance
 __all__ = ['Activations',
            'Layers',
            'Normalization',
-           'Ops']
+           'Ops',
+           'Distance']
