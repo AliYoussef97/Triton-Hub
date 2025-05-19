@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='TritonHub',
-    version='1.1.0',
+    version='1.1.1',
     author='Ali Youssef',
     description='A collection of Triton-based neural network modules',
     long_description=open('README.md').read(),
