@@ -1,7 +1,7 @@
 import triton
 import triton.language as tl
 import torch
-from TritonHub.Ops.norm import _compute_norms_kernel
+from TritonHub.Ops.norm import _norm_fwd_kernel
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -45,9 +45,9 @@ def _normalize_fwd(x, eps=1e-6):
         B,
     )
     with torch.cuda.device(x.device.index):
-        _compute_norms_kernel[grid](x, x.stride(0), x.stride(1), x.stride(2),
-                                    norms_x, norms_x.stride(0), norms_x.stride(1),
-                                    eps, M, K, dtype=dtype)
+        _norm_fwd_kernel[grid](x, x.stride(0), x.stride(1), x.stride(2),
+                               norms_x, norms_x.stride(0), norms_x.stride(1),
+                               eps, 2, M, K, dtype=dtype)
         _normalize_fwd_kernel[grid](x, x.stride(0), x.stride(1), x.stride(2),
                                     norms_x, norms_x.stride(0), norms_x.stride(1), 
                                     x_norm, x_norm.stride(0), x_norm.stride(1), x_norm.stride(2),
@@ -104,7 +104,7 @@ def _normalize_bwd(x_norm, norms_x, dout):
         dout = dout.contiguous()
     B, M, K = x_norm.shape
     assert dout.shape == (B, M, K), "Output gradient shape mismatch"
-    assert x_norm.dtype ==norms_x.dtype == dout.dtype, "All tensors must have the same dtype"
+    assert x_norm.dtype == norms_x.dtype == dout.dtype, "All tensors must have the same dtype"
     dx = torch.empty((B, M, K), memory_format=torch.contiguous_format, device=x_norm.device, dtype=x_norm.dtype)
     assert dx.stride(-1) == 1, "Output tensors must be contiguous"
     dtype = (tl.bfloat16 if x_norm.dtype == torch.bfloat16 else (tl.float16 if x_norm.dtype == torch.float16 else tl.float32))
@@ -138,6 +138,6 @@ class Normalize(torch.autograd.Function):
 class normalize:
     def __init__(self, eps=1e-6):
         self.eps = eps
-        self.norm = Normalize.apply
+        self.normalize = Normalize.apply
     def __call__(self, x):
-        return self.norm(x, self.eps)
+        return self.normalize(x, self.eps)

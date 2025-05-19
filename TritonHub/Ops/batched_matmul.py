@@ -88,17 +88,17 @@ def _batched_matmul_bwd_kernel_x(y_ptr, stride_yb, stride_yn, stride_yk,
     y_ptr += pid_b * stride_yb
     dout_ptr += pid_b * stride_doutb
     
-    y_ptrs = y_ptr + (offs_n[:, None] * stride_yn + offs_k[None, :] * stride_yk)
-    dout_ptrs = dout_ptr + (offs_m[:, None] * stride_doutm + offs_n[None, :] * stride_doutn)
+    y_ptr = y_ptr + (offs_k[None, :] * stride_yk)
+    dout_ptr = dout_ptr + (offs_m[:, None] * stride_doutm)
     
     dx = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_K), dtype=tl.float32)
     
     for n in range(0, tl.cdiv(N, BLOCK_SIZE_N)):
+        y_ptrs = y_ptr + ((n * BLOCK_SIZE_N + offs_n[:, None]) * stride_yn)
+        dout_ptrs = dout_ptr + ((n * BLOCK_SIZE_N + offs_n[None, :]) * stride_doutn)
         y = tl.load(y_ptrs, mask=(offs_n[:, None] < (N - n * BLOCK_SIZE_N)) & (offs_k[None, :] < K), other=0.0).to(dtype)
         dout = tl.load(dout_ptrs, mask=(offs_m[:, None] < M) & (offs_n[None, :] < (N - n * BLOCK_SIZE_N)), other=0.0).to(dtype)
         dx += tl.dot(dout, y)
-        y_ptrs += BLOCK_SIZE_N * stride_yn
-        dout_ptrs += BLOCK_SIZE_N * stride_doutn
     
     dx = dx.to(dtype)
     
@@ -128,17 +128,17 @@ def _batched_matmul_bwd_kernel_y(x_ptr, stride_xb, stride_xm, stride_xk,
     x_ptr += pid_b * stride_xb
     dout_ptr += pid_b * stride_doutb
     
-    x_ptrs = x_ptr + (offs_k[:, None] * stride_xk + offs_m[None, :] * stride_xm)
-    dout_ptrs = dout_ptr + (offs_m[:, None] * stride_doutm + offs_n[None, :] * stride_doutn)
+    x_ptr = x_ptr + (offs_k[:, None] * stride_xk)
+    dout_ptr = dout_ptr + (offs_n[None, :] * stride_doutn)
     
     dy = tl.zeros((BLOCK_SIZE_K, BLOCK_SIZE_N), dtype=tl.float32)
     
     for m in range(0, tl.cdiv(M, BLOCK_SIZE_M)):
+        x_ptrs = x_ptr + ((m * BLOCK_SIZE_M + offs_m[None, :]) * stride_xm)
+        dout_ptrs = dout_ptr + ((m * BLOCK_SIZE_M + offs_m[:, None]) * stride_doutm)
         x = tl.load(x_ptrs, mask=(offs_k[:, None] < K) & (offs_m[None, :] < (M - m * BLOCK_SIZE_M)), other=0.0).to(dtype)
         dout = tl.load(dout_ptrs, mask=(offs_m[:, None] < (M - m * BLOCK_SIZE_M)) & (offs_n[None, :] < N), other=0.0).to(dtype)
         dy += tl.dot(x, dout)
-        x_ptrs += BLOCK_SIZE_M * stride_xm
-        dout_ptrs += BLOCK_SIZE_M * stride_doutm
     
     dy = dy.trans(1, 0).to(dtype)
     

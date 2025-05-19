@@ -1,7 +1,7 @@
 import triton
 import triton.language as tl
 import torch
-from TritonHub.Ops.norm import _compute_norms_kernel
+from TritonHub.Ops.norm import _norm_fwd_kernel
 from TritonHub.Ops.normalize import _normalize_fwd_kernel
 from TritonHub.Ops.batched_matmul import _batched_matmul_fwd_kernel
 from TritonHub.autotune import get_cuda_autotune_config
@@ -30,12 +30,12 @@ def _cos_sim_fwd(x, y, eps=1e-6):
         B,
     )
     with torch.cuda.device(x.device.index):
-        _compute_norms_kernel[grid_norm_x](x, x.stride(0), x.stride(1), x.stride(2),
-                                           norms_x, norms_x.stride(0), norms_x.stride(1),
-                                           eps, M, K, dtype=dtype)
-        _compute_norms_kernel[grid_norm_y](y, y.stride(0), y.stride(1), y.stride(2),
-                                           norms_y, norms_y.stride(0), norms_y.stride(1),
-                                           eps, N, K, dtype=dtype)
+        _norm_fwd_kernel[grid_norm_x](x, x.stride(0), x.stride(1), x.stride(2),
+                                      norms_x, norms_x.stride(0), norms_x.stride(1),
+                                      eps, 2, M, K, dtype=dtype)
+        _norm_fwd_kernel[grid_norm_y](y, y.stride(0), y.stride(1), y.stride(2),
+                                      norms_y, norms_y.stride(0), norms_y.stride(1),
+                                      eps, 2, N, K, dtype=dtype)
         _normalize_fwd_kernel[grid_norm_x](x, x.stride(0), x.stride(1), x.stride(2),
                                            norms_x, norms_x.stride(0), norms_x.stride(1),
                                            x_norm, x_norm.stride(0), x_norm.stride(1), x_norm.stride(2),
