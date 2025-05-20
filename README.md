@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="./assets/tritonhub.png" alt="TritonHub" style="object-fit: cover;"/>
+    <img src="./assets/TritonHub.png" alt="TritonHub" style="object-fit: cover;"/>
 </p>
 <!-- <h1 align="center">TritonHub</h1> -->
 
