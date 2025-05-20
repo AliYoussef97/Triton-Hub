@@ -83,7 +83,7 @@ TritonHub currently supports the following modules, with <span style="color:gree
 - **Ops**
   - Batched Matmul (bmm): supports unbatched inputs
   - Normalize (L2 normalization, **Planned: L1 normalization**)
-  - Norm (matrix/vector L1 or L2 norm)
+  - Norm (matrix/vector L1, L2 and p-norms)
 
 
 ## 🗺️ Roadmap
@@ -94,7 +94,7 @@ TritonHub currently supports the following modules, with <span style="color:gree
 | Convolution Layer (1D/2D)               | ❌ |
 | BatchNorm                        | ❌ |
 | L1 Tensor Normalization               | ❌ |
-| L1 and L2 Matrix/Vector Norms         | ✅ |
+| Matrix/Vector L1, L2 and p Norms         | ✅ |
 | Activation Functions   | ✅ |
 | Distance Functions               | ✅ |
 | Batched Matmul               | ✅ |

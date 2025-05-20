@@ -1,6 +1,7 @@
 import triton
 import triton.language as tl
 import torch
+from triton.language.extra.cuda.libdevice import pow
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -24,14 +25,18 @@ def _norm_fwd_kernel(x_ptr, stride_xb, stride_xm, stride_xk,
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)): 
         x_ptrs = x_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xk)
         x = tl.load(x_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(tl.float32)
-        if p == 2:
+        if p == 1:
+            x = tl.sum(tl.abs(x), axis=1)
+        elif p == 2:
             x = tl.sum(x * x, axis=1)
         else:
-            x = tl.sum(tl.abs(x), axis=1)
+            x = tl.sum(pow(tl.abs(x), p), axis=1)
         out += x
     
     if p == 2:
         out = tl.sqrt(out)
+    elif p != 1:
+        out = pow(out, 1.0 / p)
     out = tl.maximum(out, eps)
     out = out.to(dtype)
 
@@ -75,19 +80,24 @@ def _norm_bwd_kernel(x_ptr, stride_xb, stride_xm, stride_xk,
     dout_ptr += (pid_b * stride_doutb) + (offs_m[:, None] * stride_doutm)
     dx_ptr += (pid_b * stride_dxb) + (offs_m[:, None] * stride_dxm)
 
-    if p == 2:
+    if p != 1:
         norms_x_ptr += (pid_b * stride_normsxb) + (offs_m[:, None] * stride_normsxm)
         norms_x = tl.load(norms_x_ptr, mask=offs_m[:, None] < M, other=0.0).to(tl.float32)
+        if p != 2:
+            norms_x = pow(norms_x, p - 1)
     dout = tl.load(dout_ptr, mask=offs_m[:, None] < M, other=0.0).to(tl.float32)
 
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
         x_ptrs = x_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xk)
         x = tl.load(x_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(tl.float32)
-        if p == 2:
+        if p == 1:
+            sign = tl.where(x > 0, 1.0, tl.where(x < 0, -1.0, 0.0))
+            grad = (dout * sign)
+        elif p == 2:
             grad = (dout * x) / norms_x
         else:
             sign = tl.where(x > 0, 1.0, tl.where(x < 0, -1.0, 0.0))
-            grad = (dout * sign)
+            grad = (dout * sign * pow(tl.abs(x), p - 1)) / norms_x
         dx_ptrs = dx_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xk)
         tl.store(dx_ptrs, grad.to(dtype), mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)))
 
@@ -135,7 +145,8 @@ class Norm(torch.autograd.Function):
 
 class norm:
     def __init__(self, p=2, eps=1e-6):
-        assert p in [1, 2], "Only L1 and L2 norms are supported"
+        assert p >= 1 and p <= 6, "p must be in [1, 6] for numerical stability"
+        assert eps >= 0, "eps must be non-negative"
         self.p = p
         self.eps = eps
         self.norm = Norm.apply
