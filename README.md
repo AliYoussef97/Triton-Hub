@@ -75,6 +75,7 @@ TritonHub currently supports the following modules, with <span style="color:gree
 - **Neural Network Layers**
   - Linear
   - Dropout
+  - Multi-Layer Perceptron (Gated-MLP or FFN)
   - **Planned: Convolution Layers (1D/2D)**
 
 - **Distance Functions**
