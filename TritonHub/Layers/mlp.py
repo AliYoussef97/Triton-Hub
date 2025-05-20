@@ -1,6 +1,6 @@
 from torch import nn
 from TritonHub.Layers import Linear
-import TritonHub.Activations
+from TritonHub import Activations
 
 class MLP(nn.Module):
     def __init__(self,
@@ -24,8 +24,8 @@ class MLP(nn.Module):
             self.fc1 = Linear(in_features, hidden_features, bias=bias, **factory_kwargs)
         else:
             raise NotImplementedError(f"MLP type {mlp_type} not implemented")
-        assert hasattr(TritonHub.Activations, activation), f"Activation {activation} not found in TritonHub.Activations"
-        self.activation = getattr(TritonHub.Activations, activation)()
+        assert hasattr(Activations, activation), f"Activation {activation} not found in TritonHub.Activations"
+        self.activation = getattr(Activations, activation)()
         self.fc2 = Linear(hidden_features, out_features, bias=bias, **factory_kwargs)
         self._fwd = self._gated_mlp if mlp_type == "gated_mlp" else self._ffn
 
