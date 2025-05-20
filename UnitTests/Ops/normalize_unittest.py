@@ -3,13 +3,14 @@ from TritonHub.Ops import normalize
 from tabulate import tabulate as tb
 
 class NormalizeUnitTest:
-    def __init__(self, B=4, M=512, D=256, dtype=torch.float32, print_tb=False):
+    def __init__(self, B=4, M=512, D=256, p=2, dtype=torch.float32, print_tb=False):
         self.B = B
         self.M = M
         self.D = D
+        self.p = p
         self.dtype = dtype
         self.print_tb = print_tb
-        self.norm = normalize(eps=1e-12)
+        self.norm = normalize(p=p, eps=1e-12)
         self.start = torch.cuda.Event(enable_timing=True)
         self.end = torch.cuda.Event(enable_timing=True)
 
@@ -33,7 +34,7 @@ class NormalizeUnitTest:
         self.triton_time_fwd = self.start.elapsed_time(self.end)
         
         self.start.record()
-        output_tor = torch.nn.functional.normalize(input_x_tor, dim=-1, eps=1e-12)
+        output_tor = torch.nn.functional.normalize(input_x_tor, p=self.p, dim=-1, eps=1e-12)
         self.end.record()
         torch.cuda.synchronize()
         self.torch_time_fwd = self.start.elapsed_time(self.end)
@@ -75,12 +76,13 @@ class NormalizeUnitTest:
 
 if __name__ == '__main__':
     B, M = 1, 1000
+    p = 2
     print_tb = True
     for D in [32, 64, 128, 256, 512, 1024]:
         for i in range(2):
             if i ==0: print('First iteration Slow due to Triton Autotune'); print_tb=False 
             else: print_tb=True
             for dtype in [torch.float16, torch.float32]:
-                runner = NormalizeUnitTest(B, M, D, dtype, print_tb)
+                runner = NormalizeUnitTest(B, M, D, p, dtype, print_tb)
                 runner.run()
     print('All tests passed!')
